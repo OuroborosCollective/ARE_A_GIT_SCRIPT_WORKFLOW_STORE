@@ -28,13 +28,22 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.10.2'
-      - name: Build release APK
+      - name: Build release APK and AAB
         working-directory: android
-        run: gradle :app:assembleRelease --no-daemon
+        run: |
+          set -euo pipefail
+          gradle :app:assembleRelease :app:bundleRelease --no-daemon
+          mkdir -p ../dist
+          test -s app/build/outputs/apk/release/app-release-unsigned.apk
+          test -s app/build/outputs/bundle/release/app-release.aab
+          cp app/build/outputs/apk/release/app-release-unsigned.apk ../dist/ARE-Store-v1.0.${GITHUB_RUN_NUMBER}-unsigned.apk
+          cp app/build/outputs/bundle/release/app-release.aab ../dist/ARE-Store-v1.0.${GITHUB_RUN_NUMBER}-unsigned.aab
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: are-store-v1.0.${{ github.run_number }}
           name: ARE Store Android v1.0.${{ github.run_number }}
-          files: android/app/build/outputs/apk/release/app-release.apk
+          files: |
+            dist/ARE-Store-v1.0.${{ github.run_number }}-unsigned.apk
+            dist/ARE-Store-v1.0.${{ github.run_number }}-unsigned.aab
           generate_release_notes: true
