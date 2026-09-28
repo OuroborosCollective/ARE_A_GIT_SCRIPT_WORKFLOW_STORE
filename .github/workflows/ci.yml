@@ -32,6 +32,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
       - name: Android debug build
         working-directory: android
         run: gradle :app:assembleDebug --no-daemon
