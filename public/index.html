@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARE — Another Revision Engineering</title>
+<meta name="description" content="Evidence-bound GitHub scripts, GitHub Actions workflows, CI/CD automation, deployment verification, and reusable developer tooling.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#catalog">Skip to catalog</a>
+<main class="site">
+  <header class="nav">
+    <a class="brand" href="/"><b>ARE</b><span>ANOTHER REVISION ENGINEERING<small>scripts with evidence</small></span></a>
+    <nav aria-label="Primary">
+      <a href="/discover.html">Discover</a>
+      <a href="#catalog">Products</a>
+      <a href="#method">Method</a>
+      <a href="/admin.html">Shop Admin</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Ouroboros Collective / developer automation</p>
+      <h1>Package the work.<br><em>Prove what travels.</em></h1>
+      <p class="lede">ARE discovers real GitHub Actions workflows, CI/CD automation, deployment checks, repository scripts and developer tooling — then packages the exact source you select with revision-bound evidence.</p>
+      <a class="primary" href="/discover.html">Start repository discovery</a>
+    </div>
+    <div class="instrument" aria-label="Evidence instrument panel">
+      <div class="instrument-top"><span>ARE PORTABILITY CHECK</span><span>v2</span></div>
+      <div class="instrument-row"><i>01</i><span>repository</span><b>real GitHub revision</b></div>
+      <div class="instrument-row"><i>02</i><span>inventory</span><b>complete candidate scan</b></div>
+      <div class="instrument-row"><i>03</i><span>artifact</span><b>path + blob SHA</b></div>
+      <div class="instrument-row"><i>04</i><span>product</span><b>manifest-bound package</b></div>
+    </div>
+  </section>
+
+  <section id="catalog" class="method">
+    <div>
+      <p class="eyebrow">Live catalog</p>
+      <h2>Published automation products.</h2>
+      <p class="form-hint">Only explicitly published products appear here. Drafts remain owner-visible in Shop Admin.</p>
+    </div>
+    <div id="catalogProducts" class="product-public-grid stagger" aria-live="polite">
+      <div class="skeleton" role="status" aria-label="Loading published products"></div>
+      <div class="skeleton" role="status" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <section id="method" class="method">
+    <div>
+      <p class="eyebrow">No guesswork</p>
+      <h2>“Portable” is a finding, not a vibe.</h2>
+    </div>
+    <div class="method-grid">
+      <article><span>01</span><h3>Inspect</h3><p>ARE reads the selected repository's actual Git tree and candidate automation files through your GitHub authorization.</p></article>
+      <article><span>02</span><h3>Explain</h3><p>Repository coupling, secrets, machine paths, third-party dependencies and other adaptation findings are surfaced per artifact.</p></article>
+      <article><span>03</span><h3>Package</h3><p>Only the files you select become a product. The archive is bound to the scanned revision and source blob SHAs.</p></article>
+    </div>
+  </section>
+
+  <footer>ARE · Ouroboros Collective · evidence before green</footer>
+</main>
+
+<dialog id="consentDialog" aria-labelledby="consentTitle">
+  <h2 id="consentTitle">Connect GitHub</h2>
+  <p id="consentBody">ARE reads your repository list and the Git tree you explicitly select. Read access is separate from write access. You can disconnect at any time.</p>
+  <div class="dialog-actions">
+    <button class="secondary" id="consentCancel" type="button">Cancel</button>
+    <button class="primary" id="consentContinue" type="button">Continue to GitHub</button>
+  </div>
+</dialog>
+
+<script type="module">
+import { api, esc, money, el } from "/shared.js";
+
+const grid = el("#catalogProducts");
+
+function card(p) {
+  const price = p.price_cents > 0 ? money(p.price_cents) : "Free";
+  return `<article class="glass-panel public-card">
+    <p class="eyebrow">${esc(p.repository || "ARE PRODUCT")}</p>
+    <h3>${esc(p.title)}</h3>
+    <p>${esc(p.description || "")}</p>
+    <p class="form-hint mono">SOURCE REVISION · ${esc((p.source_revision || "unknown").slice(0, 12))} · ${p.artifact_count || 0} FILES · ${esc(p.rule_version || "ARE PORTABILITY V2")}</p>
+    <div class="public-price">${price}</div>
+    <a class="admin-action" href="${esc(p.public_url)}">View product →</a>
+  </article>`;
+}
+
+async function loadCatalog() {
+  try {
+    const data = await api("/products/catalog");
+    const products = data.products || [];
+    grid.innerHTML = products.length
+      ? products.map(card).join("")
+      : `<p class="form-hint">No published automation products yet. <a class="back" href="/discover.html">Start repository discovery →</a></p>`;
+  } catch {
+    grid.innerHTML = `<p class="form-hint">Live catalog readback unavailable. <button class="secondary" id="retryCatalog" type="button">Retry</button></p>`;
+    el("#retryCatalog")?.addEventListener("click", loadCatalog);
+  }
+}
+loadCatalog();
+
+// Connect flow with an explicit consent dialog (keyboard accessible).
+const dialog = el("#consentDialog");
+el("#consentContinue").addEventListener("click", async () => {
+  dialog.close();
+  try {
+    const { authorize_url } = await api("/github/oauth/start", { method: "POST", body: JSON.stringify({ scope: "read" }) });
+    location.assign(authorize_url);
+  } catch (e) {
+    location.assign("/discover.html");
+  }
+});
+el("#consentCancel").addEventListener("click", () => dialog.close());
+document.querySelectorAll("[data-connect]").forEach((b) => b.addEventListener("click", () => dialog.showModal()));
+</script>
+</body>
+</html>
