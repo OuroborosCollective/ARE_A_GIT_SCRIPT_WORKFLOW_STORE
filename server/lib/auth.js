@@ -22,10 +22,6 @@ export function createState() {
   return base64url(crypto.randomBytes(16));
 }
 
-export function createNonce() {
-  return base64url(crypto.randomBytes(16));
-}
-
 export async function beginAuth({ origin, scope = "read" } = {}) {
   if (!hasOAuth()) {
     throw new HttpError(503, "github_oauth_not_configured", {
@@ -35,13 +31,11 @@ export async function beginAuth({ origin, scope = "read" } = {}) {
   const verifier = createCodeVerifier();
   const challenge = sha256Base64Url(verifier);
   const state = createState();
-  const nonce = createNonce();
   const requestedScope = scope === "write" ? config.github.writeScope : config.github.readScope;
 
   await store.oauthStates.mutate((data) => {
     data[state] = {
       verifier,
-      nonce,
       scope,
       requestedScope,
       origin,
@@ -188,14 +182,10 @@ export async function revokeSession(sid) {
   });
 }
 
-// Read access is required for discovery; write access is a separate boundary
-// used only for actions the owner explicitly authorizes.
+// Read access is required for discovery. Write access is a separate boundary
+// used only for actions the owner explicitly authorizes; no store operation
+// currently requires it, so it is intentionally not enforced here.
 export function requireReadGrant(session) {
   if (!session?.readGrant?.granted) throw new HttpError(403, "github_read_grant_required");
-  return session;
-}
-
-export function requireWriteGrant(session) {
-  if (!session?.writeGrant?.granted) throw new HttpError(403, "github_write_grant_required");
   return session;
 }

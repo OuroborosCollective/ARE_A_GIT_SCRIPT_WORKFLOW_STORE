@@ -165,26 +165,3 @@ export class MissingBlobError extends Error {
     this.requiresRescan = true;
   }
 }
-
-// Verifies each selected artifact against the exact blob SHA observed at scan
-// time. Any drift stops packaging with a 409 — there is no silent refresh.
-// Kept as a pure helper; the packaging pipeline performs the same check against
-// the current repository tree.
-export function verifyArtifacts(expectedArtifacts, currentBlobs) {
-  const byPath = new Map(currentBlobs.map((b) => [b.path, b]));
-  const verified = [];
-  for (const expected of expectedArtifacts) {
-    const current = byPath.get(expected.path);
-    if (!current) throw new MissingBlobError(expected.path, expected.sha);
-    if (current.blobSha !== expected.sha) {
-      throw new SourceChangedError(expected.sha, current.blobSha, expected.path);
-    }
-    verified.push({
-      path: expected.path,
-      blobSha: current.blobSha,
-      sizeBytes: current.sizeBytes ?? Buffer.byteLength(current.content || ""),
-      content: current.content,
-    });
-  }
-  return verified;
-}

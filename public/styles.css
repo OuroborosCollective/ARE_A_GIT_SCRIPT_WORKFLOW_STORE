@@ -47,12 +47,12 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
   padding: 10px 0;
 }
-.brand { display: flex; align-items: center; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 12px; min-height: 44px; }
 .brand > b { font: 700 24px "Space Grotesk"; color: var(--acid); letter-spacing: -.06em; }
 .brand span { font: 600 11px "Space Grotesk"; letter-spacing: .11em; }
 .brand small { display: block; color: var(--muted); font: 500 9px "IBM Plex Sans"; letter-spacing: .13em; margin-top: 3px; }
 .nav nav { display: flex; gap: 22px; font-size: 13px; color: #c2cbc5; flex-wrap: wrap; }
-.nav nav a { padding: 8px 0; }
+.nav nav a { display: inline-flex; align-items: center; min-height: 44px; }
 .nav nav a:hover { color: var(--acid); }
 
 /* Layout ----------------------------------------------------------------- */
@@ -126,7 +126,7 @@ section { scroll-margin-top: 90px; }
 
 /* Discovery workspace ---------------------------------------------------- */
 .discover header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding: 16px 0; }
-.back { font: 600 12px "Space Grotesk"; color: #aab5ae; }
+.back { display: inline-flex; align-items: center; min-height: 44px; font: 600 12px "Space Grotesk"; color: #aab5ae; }
 .badge { color: var(--acid); font: 600 10px "Space Grotesk"; letter-spacing: .14em; }
 .hero-lite { padding: 60px 0 44px; border-bottom: 1px solid var(--line); }
 .hero-lite h1 { font: 600 clamp(2.4rem, 5.5vw, 4.6rem)/.92 "Space Grotesk"; letter-spacing: -.05em; margin: 14px 0; }
@@ -154,7 +154,7 @@ section { scroll-margin-top: 90px; }
 .artifact-row b { display: block; font: 600 14px "Space Grotesk"; }
 .artifact-row small, .artifact-row em { display: block; font-size: 11px; }
 .artifact-row em { font-style: normal; color: #b3beb7; margin-top: 4px; }
-.artifact-row input { margin-top: 3px; width: 18px; height: 18px; }
+.artifact-row input { margin-top: 3px; width: 24px; height: 24px; }
 .package-bar { padding: 18px 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
 form { display: grid; gap: 12px; border-top: 1px solid var(--line); margin-top: 20px; padding-top: 22px; }
@@ -169,8 +169,8 @@ input:focus, textarea:focus, select:focus { border-color: #66745c; }
 
 .marketing-card { border: 1px solid var(--line); background: var(--panel-2); padding: 18px; margin-top: 4px; border-radius: 8px; }
 .marketing-card h3 { margin: 6px 0 8px; font: 600 22px "Space Grotesk"; }
-.toggle { display: flex; align-items: center; gap: 10px; color: #dbe4de; font-size: 12px; padding: 8px 0; }
-.toggle input { min-height: 0; width: 18px; height: 18px; }
+.toggle { display: flex; align-items: center; gap: 10px; color: #dbe4de; font-size: 12px; padding: 8px 0; min-height: 44px; }
+.toggle input { min-height: 0; width: 24px; height: 24px; }
 
 .form-hint { color: var(--muted); font-size: 12px; }
 .error { color: var(--danger); font-size: 13px; }
@@ -190,8 +190,8 @@ input:focus, textarea:focus, select:focus { border-color: #66745c; }
 .evidence-cell b { display: block; font: 600 13px "IBM Plex Mono"; margin-top: 6px; word-break: break-all; }
 
 /* Admin table ------------------------------------------------------------ */
-.table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
-.table th, .table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; table-layout: fixed; }
+.table th, .table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; word-break: break-word; overflow-wrap: anywhere; }
 .table th { color: var(--muted); font: 600 10px "Space Grotesk"; letter-spacing: .12em; text-transform: uppercase; }
 .admin-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .admin-action {

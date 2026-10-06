@@ -19,6 +19,17 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Signing secrets live in a protected environment, never in the repository.
+    environment: android-release
+    env:
+      # Empty unless the environment provides a keystore. The Gradle config then
+      # produces an unsigned artifact instead of a falsely-signed one.
+      ARE_KEYSTORE_PATH: ${{ secrets.ARE_KEYSTORE_PATH }}
+      ARE_KEYSTORE_PASSWORD: ${{ secrets.ARE_KEYSTORE_PASSWORD }}
+      ARE_KEY_ALIAS: ${{ secrets.ARE_KEY_ALIAS }}
+      ARE_KEY_PASSWORD: ${{ secrets.ARE_KEY_PASSWORD }}
+      ARE_VERSION_CODE: ${{ vars.ARE_VERSION_CODE }}
+      ARE_VERSION_NAME: ${{ vars.ARE_VERSION_NAME }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-java@v6
@@ -28,22 +39,65 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.10.2'
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          CODE="${ARE_VERSION_CODE:-${{ github.run_number }}}"
+          NAME="${ARE_VERSION_NAME:-1.0.${GITHUB_RUN_NUMBER}}"
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Resolved versionCode=$CODE versionName=$NAME"
+
+      - name: Verify keystore when a signing secret is configured
+        if: env.ARE_KEYSTORE_PATH != ''
+        run: |
+          set -euo pipefail
+          if [ ! -f "$ARE_KEYSTORE_PATH" ]; then
+            echo "ARE_KEYSTORE_PATH is set but the file does not exist." >&2
+            exit 1
+          fi
+
       - name: Build release APK and AAB
         working-directory: android
         run: |
           set -euo pipefail
-          gradle :app:assembleRelease :app:bundleRelease --no-daemon
+          gradle :app:assembleRelease :app:bundleRelease --no-daemon \
+            -PareVersionCode=${{ steps.version.outputs.code }} \
+            -PareVersionName=${{ steps.version.outputs.name }}
           mkdir -p ../dist
-          test -s app/build/outputs/apk/release/app-release-unsigned.apk
-          test -s app/build/outputs/bundle/release/app-release.aab
-          cp app/build/outputs/apk/release/app-release-unsigned.apk ../dist/ARE-Store-v1.0.${GITHUB_RUN_NUMBER}-unsigned.apk
-          cp app/build/outputs/bundle/release/app-release.aab ../dist/ARE-Store-v1.0.${GITHUB_RUN_NUMBER}-unsigned.aab
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          AAB=$(find app/build/outputs/bundle/release -name '*.aab' | head -1)
+          test -s "$APK"
+          test -s "$AAB"
+          SUFFIX="${{ steps.version.outputs.name }}"
+          cp "$APK" "../dist/ARE-Store-${SUFFIX}.apk"
+          cp "$AAB" "../dist/ARE-Store-${SUFFIX}.aab"
+
+      - name: Record artifact checksums and release evidence
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.apk *.aab > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          {
+            echo "commit: ${{ github.sha }}"
+            echo "workflow_run: ${{ github.run_id }}"
+            echo "version_code: ${{ steps.version.outputs.code }}"
+            echo "version_name: ${{ steps.version.outputs.name }}"
+            echo "signed: ${{ env.ARE_KEYSTORE_PATH != '' }}"
+          } > RELEASE-EVIDENCE.txt
+          cat RELEASE-EVIDENCE.txt
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: are-store-v1.0.${{ github.run_number }}
-          name: ARE Store Android v1.0.${{ github.run_number }}
+          tag_name: are-store-v${{ steps.version.outputs.name }}
+          name: ARE Store Android v${{ steps.version.outputs.name }}
           files: |
-            dist/ARE-Store-v1.0.${{ github.run_number }}-unsigned.apk
-            dist/ARE-Store-v1.0.${{ github.run_number }}-unsigned.aab
+            dist/ARE-Store-${{ steps.version.outputs.name }}.apk
+            dist/ARE-Store-${{ steps.version.outputs.name }}.aab
+            dist/SHA256SUMS.txt
+            dist/RELEASE-EVIDENCE.txt
           generate_release_notes: true

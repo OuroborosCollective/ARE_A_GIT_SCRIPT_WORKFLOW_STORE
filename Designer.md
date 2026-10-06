@@ -519,3 +519,31 @@ If the Store View changes materially:
 The permanent ARE interaction model is:
 
 Evidence → Comprehension → Choice → Action → Receipt
+
+## 23. Implementation reference
+
+The Store View is implemented in this repository as a dependency-free Node.js
+service. This section records where each requirement lands so the document and
+the code stay linked.
+
+| Requirement | Implementation |
+| --- | --- |
+| One primary hero CTA | `public/index.html` (single `Start repository discovery`) |
+| Live published catalog | `public/index.html` + `GET /api/products/catalog` |
+| Product card anatomy + provenance strip | `public/index.html` |
+| Product detail as trust page | `public/product.html` |
+| Real download + receipt | `public/product.html` + `GET /api/products/package/:id` |
+| Discovery inventory readback | `public/discover.html` + `public/discover.js` |
+| Repository change resets state | `resetWorkspace()` in `public/discover.js` |
+| Evidence archive (ARE-PACKAGE-V2) | `server/lib/evidence.js`, `server/lib/packaging.js` |
+| Stale-source stop (409, no silent refresh) | `buildPackage()` in `server/lib/packaging.js` |
+| OneUp consent boundary + receipts | `server/lib/marketing.js`, `public/admin.html` |
+| Admin lifecycle columns + actions | `public/admin.html` |
+| Responsive + accessibility | `public/styles.css`, `tests/accessibility.test.js`, `tests/responsive.mjs` |
+
+Automated checks:
+
+- `npm test` — inventory, packaging, lifecycle, consent, HTTP end-to-end and
+  accessibility assertions.
+- `npm run test:responsive` — Chromium-driven check for horizontal overflow and
+  44px touch targets at 360, 412, 768 and 1200px.

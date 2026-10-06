@@ -21,6 +21,50 @@ jobs:
             echo "Credential-like material detected"
             exit 1
           fi
+      - name: Reject committed keystores
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -path ./.git -prune -o \( -name '*.jks' -o -name '*.keystore' \) -print | grep .; then
+            echo "A keystore must never be committed"
+            exit 1
+          fi
+
+  store:
+    runs-on: ubuntu-latest
+    needs: source-guards
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Store regression suite
+        run: npm test
+      - name: Server boots and serves the storefront
+        run: |
+          set -euo pipefail
+          ARE_DATA_DIR="$(mktemp -d)" PORT=3210 node server/index.js &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          for i in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:3210/ >/dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:3210/ >/dev/null
+          curl -sf http://127.0.0.1:3210/api/products/catalog -o /tmp/catalog.json
+          grep -q 'are-public-catalog.v1' /tmp/catalog.json
+      - name: Responsive and touch-target verification (Chromium)
+        run: |
+          set -euo pipefail
+          ARE_DATA_DIR="$(mktemp -d)" PORT=3211 node server/index.js &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+          for i in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:3211/ >/dev/null; then break; fi
+            sleep 0.5
+          done
+          CHROME_BIN="$(command -v chromium || command -v chromium-browser || command -v google-chrome)" \
+            node tests/responsive.mjs http://127.0.0.1:3211
 
   android:
     runs-on: ubuntu-latest

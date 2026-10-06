@@ -65,15 +65,6 @@
   <footer>ARE · Ouroboros Collective · evidence before green</footer>
 </main>
 
-<dialog id="consentDialog" aria-labelledby="consentTitle">
-  <h2 id="consentTitle">Connect GitHub</h2>
-  <p id="consentBody">ARE reads your repository list and the Git tree you explicitly select. Read access is separate from write access. You can disconnect at any time.</p>
-  <div class="dialog-actions">
-    <button class="secondary" id="consentCancel" type="button">Cancel</button>
-    <button class="primary" id="consentContinue" type="button">Continue to GitHub</button>
-  </div>
-</dialog>
-
 <script type="module">
 import { api, esc, money, el } from "/shared.js";
 
@@ -104,20 +95,6 @@ async function loadCatalog() {
   }
 }
 loadCatalog();
-
-// Connect flow with an explicit consent dialog (keyboard accessible).
-const dialog = el("#consentDialog");
-el("#consentContinue").addEventListener("click", async () => {
-  dialog.close();
-  try {
-    const { authorize_url } = await api("/github/oauth/start", { method: "POST", body: JSON.stringify({ scope: "read" }) });
-    location.assign(authorize_url);
-  } catch (e) {
-    location.assign("/discover.html");
-  }
-});
-el("#consentCancel").addEventListener("click", () => dialog.close());
-document.querySelectorAll("[data-connect]").forEach((b) => b.addEventListener("click", () => dialog.showModal()));
 </script>
 </body>
 </html>
