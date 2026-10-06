@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARE — Repository Discovery</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="discover">
+  <header>
+    <a href="/" class="back">ARE / Store</a>
+    <span class="badge">PORTABILITY LAB v2</span>
+  </header>
+
+  <section class="hero-lite">
+    <p class="eyebrow">Repository discovery</p>
+    <h1>Find the automation<br><em>worth packaging.</em></h1>
+    <p>Connect GitHub, choose a repository, explicitly confirm the analysis, inspect the complete real inventory, then package exactly what you select.</p>
+
+    <div class="marketing-card" id="connectionCard" aria-live="polite">
+      <div>
+        <p class="eyebrow">GitHub connection</p>
+        <h3 id="connectionStatus">Not connected</h3>
+        <p class="form-hint" id="connectionDetail">Read access is granted separately from write access. No GitHub token is stored in this browser.</p>
+      </div>
+      <div class="admin-actions">
+        <button id="connect" class="primary" type="button">Connect GitHub</button>
+        <button id="disconnect" class="admin-action danger" type="button" hidden>Disconnect</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="workspace">
+    <aside aria-label="Repositories">
+      <div class="search">
+        <label class="field" style="flex:1">
+          <span class="muted">Search repositories</span>
+          <input id="repoSearch" placeholder="owner/name">
+        </label>
+        <button id="search" type="button">Search</button>
+      </div>
+      <div id="repos" aria-live="polite"></div>
+    </aside>
+
+    <section class="review">
+      <div class="review-head">
+        <div>
+          <p class="eyebrow">Selected repository</p>
+          <h2 id="selected">None selected</h2>
+        </div>
+        <p id="scanState" class="form-hint" aria-live="polite">Connect GitHub to begin.</p>
+      </div>
+
+      <div class="admin-actions" style="margin-top:16px">
+        <button id="newProduct" class="admin-action" type="button">Start new product</button>
+        <button id="confirmRepo" class="primary" type="button" hidden>Confirm &amp; analyze repository</button>
+      </div>
+
+      <div id="inventoryReadback" class="form-hint" style="margin-top:14px"></div>
+      <div id="artifacts"></div>
+
+      <div class="package-bar">
+        <button id="package" class="primary" type="button" disabled>Build evidence archive</button>
+        <span id="packageState" class="form-hint" aria-live="polite"></span>
+      </div>
+      <div id="packageError"></div>
+      <a id="archiveUrl" class="back" hidden target="_blank" rel="noopener">Open generated archive</a>
+      <pre id="manifest" aria-label="Package manifest"></pre>
+
+      <form id="productForm" hidden>
+        <h3>Shop product</h3>
+        <p class="form-hint">Metadata is generated only from the current repository scan and current artifact selection. Nothing from the previous product session is reused.</p>
+        <label class="field"><span>Product title</span><input id="pTitle" placeholder="Product title"></label>
+        <label class="field"><span>Automatic product description</span><textarea id="pDescription"></textarea></label>
+        <label class="field"><span>Features — one per line</span><textarea id="pFeatures"></textarea></label>
+        <label class="field"><span>Tools — one per line</span><textarea id="pTools"></textarea></label>
+        <label class="field"><span>Installation / usage guide</span><textarea id="pGuide"></textarea></label>
+        <label class="field"><span>Price USD</span><input id="pPrice" type="number" min="0" step="0.01" placeholder="0.00"></label>
+        <small id="archivePath" class="mono form-hint"></small>
+
+        <div class="marketing-card">
+          <div>
+            <p class="eyebrow">Optional Reddit marketing</p>
+            <h3>OneUp Today</h3>
+            <p>Each product has its own marketing configuration. Draft-for-review is the safe default; automatic sending is a separate admin consent step.</p>
+          </div>
+          <label class="toggle"><input id="marketingEnabled" type="checkbox"><span>Marketing aktivieren</span></label>
+          <label class="field"><span>OneUp product ID (optional)</span><input id="oneupProductId"></label>
+          <label class="field"><span>OneUp campaign ID (optional)</span><input id="oneupCampaignId"></label>
+          <label class="field"><span>Marketing mode</span>
+            <select id="marketingMode"><option value="draft_for_review">Drafts for review</option></select>
+          </label>
+          <label class="field"><span>Cadence</span>
+            <select id="marketingFrequency"><option>daily</option><option>12hours</option><option>6hours</option><option>weekly</option><option>biweekly</option></select>
+          </label>
+          <label class="field"><span>Search terms (comma separated)</span><input id="marketingTerms"></label>
+          <label class="field"><span>Targeting</span><textarea id="marketingTargeting"></textarea></label>
+          <p class="form-hint">OneUp is external. This app records the product-level configuration but does not fabricate external send/readback.</p>
+        </div>
+
+        <div class="admin-actions">
+          <button id="saveProduct" type="button" class="primary">Save as shop draft</button>
+        </div>
+        <div id="saveState" aria-live="polite"></div>
+      </form>
+    </section>
+  </section>
+
+  <a class="back" href="/">← Storefront</a>
+</main>
+<script type="module" src="/discover.js"></script>
+</body>
+</html>

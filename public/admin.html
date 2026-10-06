@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARE — Shop Admin</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="discover">
+  <header>
+    <a class="back" href="/">ARE / Store</a>
+    <span class="badge">SHOP ADMIN</span>
+  </header>
+
+  <section class="hero-lite">
+    <p class="eyebrow">Operations</p>
+    <h1>Product state and evidence.</h1>
+    <p>Publishing is an explicit action. Marketing authority is separate and never implied by publishing. Every status change and consequential action is recorded.</p>
+  </section>
+
+  <section class="workspace" style="grid-template-columns:1fr">
+    <section class="review">
+      <div class="review-head">
+        <div>
+          <p class="eyebrow">Catalog</p>
+          <h2 id="catalogTitle">Loading products…</h2>
+        </div>
+        <button id="refresh" class="admin-action" type="button">Refresh</button>
+      </div>
+      <div id="adminList" aria-live="polite"></div>
+    </section>
+  </section>
+
+  <a class="back" href="/">← Storefront</a>
+</main>
+
+<dialog id="previewDialog" aria-labelledby="previewTitle">
+  <h2 id="previewTitle">Action preview</h2>
+  <div id="previewBody"></div>
+  <div class="dialog-actions">
+    <button class="secondary" id="previewCancel" type="button">Cancel</button>
+    <button class="primary" id="previewConfirm" type="button">Approve draft-for-review</button>
+  </div>
+</dialog>
+
+<script type="module">
+import { api, esc, money, el } from "/shared.js";
+
+let products = [];
+let pendingApproval = null;
+
+function statusBadge(status) {
+  const cls = status === "published" ? "status-portable" : status === "archived" ? "status-review" : "status-draft";
+  return `<span class="status-badge ${cls}">${esc(status.toUpperCase())}</span>`;
+}
+
+function render() {
+  el("#catalogTitle").textContent = `${products.length} product(s)`;
+  el("#adminList").innerHTML =
+    products
+      .map((p) => {
+        const marketing = p.marketing || {};
+        return `<article class="glass-panel admin-product">
+          <div class="admin-product-head">
+            <div>
+              <p class="eyebrow">${esc(p.repository || "no repository")}</p>
+              <h2>${esc(p.title)}</h2>
+              <p class="mono">${esc(p.id)}</p>
+            </div>
+            <div>${statusBadge(p.status)}</div>
+          </div>
+          <table class="table">
+            <thead><tr><th>Product</th><th>Status</th><th>Source revision</th><th>Package</th><th>Marketing</th><th>Updated</th></tr></thead>
+            <tbody><tr>
+              <td>${esc(p.title)}</td>
+              <td>${esc(p.status)}</td>
+              <td class="mono">${esc((p.source_revision || "—").slice(0, 12))}</td>
+              <td>${p.package_id ? `<a class="back" href="/api/products/package/${esc(p.package_id)}">${esc(p.package_id.slice(0, 14))}</a>` : "not packaged"}</td>
+              <td>${esc(marketing.status || "unconfigured")} / ${esc(marketing.approval || "not_requested")}</td>
+              <td class="mono">${esc(p.updated_at || "")}</td>
+            </tr></tbody>
+          </table>
+          <div class="admin-actions" style="margin-top:14px">
+            <button class="admin-action" data-act="publish" data-id="${esc(p.id)}" ${p.status === "published" ? "disabled" : ""}>Publish</button>
+            <button class="admin-action" data-act="unpublish" data-id="${esc(p.id)}" ${p.status !== "published" ? "disabled" : ""}>Unpublish</button>
+            <button class="admin-action" data-act="archive" data-id="${esc(p.id)}" ${p.status === "archived" ? "disabled" : ""}>Archive</button>
+            <button class="admin-action" data-act="configure" data-id="${esc(p.id)}" ${p.marketing?.enabled ? "disabled" : ""}>Configure marketing (draft-for-review)</button>
+            <button class="admin-action" data-act="marketing" data-id="${esc(p.id)}" ${p.marketing?.enabled ? "" : "disabled"}>Approve marketing draft</button>
+            <button class="admin-action" data-act="revoke" data-id="${esc(p.id)}" ${p.marketing?.approval === "approved" ? "" : "disabled"}>Revoke marketing</button>
+            <button class="admin-action" data-act="receipts" data-id="${esc(p.id)}">View action receipts</button>
+          </div>
+          <div id="receipts-${esc(p.id)}"></div>
+        </article>`;
+      })
+      .join("") || `<p class="form-hint">No products yet. Create one through Discover.</p>`;
+
+  document.querySelectorAll("[data-act]").forEach((b) => (b.onclick = () => act(b.dataset.act, b.dataset.id)));
+}
+
+async function load() {
+  const data = await api("/products/list");
+  products = data.products || [];
+  render();
+}
+
+async function act(kind, id) {
+  const product = products.find((p) => p.id === id);
+  try {
+    if (kind === "publish") await api("/products/publish", { method: "POST", body: JSON.stringify({ product_id: id, status: "published" }) });
+    else if (kind === "unpublish") await api("/products/publish", { method: "POST", body: JSON.stringify({ product_id: id, status: "draft" }) });
+    else if (kind === "archive") await api("/products/publish", { method: "POST", body: JSON.stringify({ product_id: id, status: "archived" }) });
+    else if (kind === "configure")
+      await api("/products/marketing", {
+        method: "POST",
+        body: JSON.stringify({ product_id: id, enabled: true, mode: "draft_for_review", frequency: "daily", terms: [] }),
+      });
+    else if (kind === "marketing") return openPreview(product);
+    else if (kind === "revoke") await api("/products/marketing-approval", { method: "POST", body: JSON.stringify({ product_id: id, approval: false }) });
+    else if (kind === "receipts") return showReceipts(id);
+    await load();
+  } catch (e) {
+    alert(`Action failed: ${e.message}`);
+  }
+}
+
+// Action preview before any approval. Shows exact platform, target, campaign,
+// product and mode.
+async function openPreview(product) {
+  pendingApproval = product.id;
+  const preview = {
+    platform: "reddit",
+    productId: product.id,
+    campaignId: product.marketing?.oneup_campaign_id || "—",
+    mode: product.marketing?.mode || "draft_for_review",
+    terms: (product.marketing?.terms || []).join(", ") || "—",
+    targeting: product.marketing?.targeting || "—",
+  };
+  el("#previewBody").innerHTML =
+    `<div class="evidence-grid">
+      <div class="evidence-cell"><span>Platform</span><b>${esc(preview.platform)}</b></div>
+      <div class="evidence-cell"><span>Product</span><b>${esc(preview.productId)}</b></div>
+      <div class="evidence-cell"><span>Campaign</span><b>${esc(preview.campaignId)}</b></div>
+      <div class="evidence-cell"><span>Mode</span><b>${esc(preview.mode)}</b></div>
+      <div class="evidence-cell"><span>Target terms</span><b>${esc(preview.terms)}</b></div>
+      <div class="evidence-cell"><span>Targeting</span><b>${esc(preview.targeting)}</b></div>
+    </div>
+    <p class="form-hint" style="margin-top:12px">Approving saves a draft for review in OneUp Today. No message is sent automatically from this action.</p>`;
+  const dialog = el("#previewDialog");
+  dialog.showModal();
+  el("#previewCancel").focus();
+}
+
+el("#previewCancel").onclick = () => el("#previewDialog").close();
+el("#previewConfirm").onclick = async () => {
+  el("#previewDialog").close();
+  if (!pendingApproval) return;
+  await api("/products/marketing-approval", { method: "POST", body: JSON.stringify({ product_id: pendingApproval, approval: true }) });
+  pendingApproval = null;
+  await load();
+};
+
+async function showReceipts(id) {
+  const data = await api(`/products/receipts?product_id=${encodeURIComponent(id)}`);
+  const node = el(`#receipts-${id}`);
+  node.innerHTML =
+    (data.receipts || [])
+      .map(
+        (r) =>
+          `<div class="receipt"><b>${esc(r.action)}</b> · ${esc(r.result || "")}<br>
+           <span class="mono">${esc(r.at)} · actor ${esc(r.actor)} · mode ${esc(r.mode || "—")} · external ${esc(r.external_id || "—")}</span></div>`,
+      )
+      .join("") || `<p class="form-hint">No receipts recorded.</p>`;
+}
+
+el("#refresh").onclick = load;
+load();
+</script>
+</body>
+</html>

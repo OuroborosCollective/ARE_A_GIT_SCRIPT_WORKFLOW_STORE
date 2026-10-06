@@ -20,9 +20,36 @@ ARE does not invent a script because a product template expects one. No source p
 
 ## Mobile app
 
-This repository contains the AndroidX companion shell for the public ARE Store. GitHub Actions builds the APK and publishes a GitHub Release from `main` after CI validation.
+This repository contains the AndroidX companion shell for the public ARE Store. GitHub Actions builds the APK and publishes a GitHub Release from `main` after CI validation. Release signing is fed only from a protected `android-release` environment; when no keystore secret is present the build stays unsigned and the release records `signed: false` plus SHA-256 checksums.
 
 Canonical web store: https://are-agent-studio.hatchable.site
+
+## Runnable store
+
+The store is a dependency-free Node.js service. It serves the Store View from
+`public/` and the JSON API from `server/`.
+
+```bash
+npm start        # http://localhost:3000
+npm test         # regression suite (inventory, packaging, lifecycle, consent, HTTP e2e, a11y)
+```
+
+See `docs/DEPLOYMENT.md` for environment variables, the Docker image and the full
+API surface. `docs/evidence/LEDGER.md` is the append-only evidence ledger.
+
+### Runtime map
+
+| Issue | Area | Implementation |
+| --- | --- | --- |
+| #9 | GitHub OAuth PKCE | `server/lib/auth.js`, `server/routes/github.js` |
+| #10 | Product detail + receipt | `public/product.html` |
+| #11 | ARE-PACKAGE-V2 + stale source | `server/lib/evidence.js`, `server/lib/packaging.js` |
+| #12 | OneUp consent + receipts | `server/lib/marketing.js`, `public/admin.html` |
+| #13 | Discovery inventory + reset | `server/lib/inventory.js`, `public/discover.js` |
+| #14 | Product state machine | `server/lib/products.js`, `public/admin.html` |
+| #15 | Signed Android release | `.github/workflows/android-release.yml`, `android/app/build.gradle` |
+| #16 | Accessibility + responsive | `public/styles.css`, `tests/accessibility.test.js` |
+| #17 | Evidence ledger | `server/lib/ledger.js`, `docs/evidence/LEDGER.md` |
 
 ## Search keywords
 

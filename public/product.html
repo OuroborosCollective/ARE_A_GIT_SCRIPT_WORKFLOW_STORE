@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ARE Product</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="discover product-public">
+  <header>
+    <a class="back" href="/">ARE / Store</a>
+    <span class="badge">PUBLISHED PRODUCT</span>
+  </header>
+
+  <section id="product" class="hero-lite">
+    <p class="eyebrow">Product</p>
+    <h1>Loading…</h1>
+    <p>Reading published product metadata.</p>
+  </section>
+
+  <div id="evidence"></div>
+
+  <section id="details" class="product-public-grid" hidden>
+    <article class="glass-panel public-card"><p class="eyebrow">Description</p><div id="description"></div></article>
+    <article class="glass-panel public-card"><p class="eyebrow">Features</p><div id="features"></div></article>
+    <article class="glass-panel public-card"><p class="eyebrow">Tools</p><div id="tools"></div></article>
+    <article class="glass-panel public-card"><p class="eyebrow">Usage</p><div id="guide"></div></article>
+  </section>
+
+  <section id="purchase" class="glass-panel" hidden style="margin-top:24px">
+    <p class="eyebrow">Purchase &amp; download</p>
+    <h2>Exact package contents</h2>
+    <p id="purchaseSummary" class="form-hint"></p>
+    <ul id="purchaseFiles" class="mono form-hint"></ul>
+    <div class="admin-actions">
+      <button id="download" class="primary" type="button">Download evidence package</button>
+    </div>
+    <div id="purchaseState" aria-live="polite"></div>
+    <div id="receipt"></div>
+  </section>
+
+  <footer>ARE evidence packages are published from reviewed product drafts. Compatibility notes remain part of the product record.</footer>
+</main>
+<script type="module">
+import { api, esc, money, textBlock, chipList, el } from "/shared.js";
+
+const params = new URLSearchParams(location.search);
+const id = params.get("product_id");
+let product = null;
+
+if (!id) {
+  el("#product").innerHTML = "<p class='eyebrow'>Product</p><h1>Missing product.</h1><p>A published product id is required.</p>";
+} else {
+  load();
+}
+
+async function load() {
+  try {
+    const data = await api(`/products/public?product_id=${encodeURIComponent(id)}`);
+    product = data.product;
+    document.title = "ARE — " + product.title;
+    const price = product.price_cents > 0 ? money(product.price_cents) : "Free";
+    el("#product").innerHTML =
+      `<p class="eyebrow">ARE PRODUCT</p><h1>${esc(product.title)}</h1>` +
+      `<p>${esc(product.description || "")}</p>` +
+      `<div class="public-price">${price}</div>`;
+
+    // Evidence appears before marketing copy.
+    el("#evidence").innerHTML =
+      `<div class="evidence-grid">
+        <div class="evidence-cell"><span>Source repository</span><b>${esc(product.repository || "unknown")}</b></div>
+        <div class="evidence-cell"><span>Source revision</span><b>${esc(product.source_revision || "unknown")}</b></div>
+        <div class="evidence-cell"><span>Selected artifacts</span><b>${product.artifact_count || 0}</b></div>
+        <div class="evidence-cell"><span>Rule version</span><b>${esc(product.rule_version || "are-portability-v2")}</b></div>
+        <div class="evidence-cell"><span>Package identifier</span><b>${esc(product.package_id || "not packaged")}</b></div>
+        <div class="evidence-cell"><span>Manifest format</span><b>${esc(product.manifest_format || "ARE-PACKAGE-V2")}</b></div>
+      </div>`;
+
+    el("#description").innerHTML = textBlock(product.description || "");
+    el("#features").innerHTML = chipList(product.special_features);
+    el("#tools").innerHTML = chipList(product.tools);
+    el("#guide").innerHTML = textBlock(product.guide || "");
+    el("#details").hidden = false;
+
+    el("#purchase").hidden = false;
+    el("#purchaseSummary").textContent =
+      `${product.artifact_count || 0} source file(s) · license: ${product.license || "single-repository reuse"}`;
+    el("#purchaseFiles").innerHTML = (product.artifact_paths || []).map((p) => `<li>${esc(p)}</li>`).join("");
+    if (!product.package_id) {
+      el("#download").disabled = true;
+      el("#purchaseState").innerHTML = `<div class="inline-error">No evidence package is attached to this product yet.</div>`;
+    }
+  } catch (e) {
+    el("#product").innerHTML = `<p class="eyebrow">Product unavailable</p><h1>Not published.</h1><p>${esc(e.message)}</p>`;
+  }
+}
+
+el("#download").addEventListener("click", async () => {
+  if (!product?.package_id) return;
+  el("#download").disabled = true;
+  el("#purchaseState").innerHTML = "";
+  el("#receipt").innerHTML = "";
+  try {
+    // Fetch the real package. A success state is only shown when the archive is
+    // actually returned with matching evidence headers.
+    const res = await fetch(`/api/products/package/${encodeURIComponent(product.package_id)}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || "Package unavailable");
+    }
+    const blob = await res.blob();
+    const sha = res.headers.get("x-are-sha256");
+    const revision = res.headers.get("x-are-source-revision");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${product.package_id}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    el("#receipt").innerHTML =
+      `<div class="inline-success">Download complete. Real package received.</div>
+       <div class="evidence-grid">
+         <div class="evidence-cell"><span>Package identifier</span><b>${esc(product.package_id)}</b></div>
+         <div class="evidence-cell"><span>Source revision</span><b>${esc(revision || product.source_revision || "")}</b></div>
+         <div class="evidence-cell"><span>Archive SHA-256</span><b>${esc(sha || "")}</b></div>
+         <div class="evidence-cell"><span>Manifest</span><b>ARE-PACKAGE-V2</b></div>
+       </div>`;
+  } catch (e) {
+    el("#purchaseState").innerHTML = `<div class="inline-error">${esc(e.message)}</div>`;
+  } finally {
+    el("#download").disabled = false;
+  }
+});
+</script>
+</body>
+</html>
